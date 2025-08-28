@@ -53,7 +53,7 @@ class SubTrackerBot {
     
     init {
         val botToken = System.getenv("TELEGRAM_BOT_TOKEN") 
-            ?: "8368197859:AAHAlcm_UKKNaZ-qxZY72hOVmCFJNS_HIRg"
+            ?: throw IllegalStateException("TELEGRAM_BOT_TOKEN environment variable is required")
         bot = TelegramBot(botToken)
     }
     
