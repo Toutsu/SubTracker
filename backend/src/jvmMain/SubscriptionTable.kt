@@ -1,12 +1,11 @@
 package backend
 
-import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.javatime.date
-import java.util.UUID
 
-object SubscriptionTable : UUIDTable("subscriptions") {
-    val userId = reference("user_id", UserTable.id)
+object SubscriptionTable : Table("subscriptions") {
+    val id = varchar("id", 36)
+    val userId = varchar("user_id", 36)
     val name = varchar("name", 255)
     val price = decimal("price", 10, 2)
     val currency = varchar("currency", 3)
@@ -15,13 +14,18 @@ object SubscriptionTable : UUIDTable("subscriptions") {
     val isActive = bool("is_active").default(true)
     val createdAt = date("created_at")
     val updatedAt = date("updated_at")
+    
+    override val primaryKey = PrimaryKey(id)
 }
 
-object UserTable : UUIDTable("users") {
+object UserTable : Table("users") {
+    val id = varchar("id", 36)
     val username = varchar("username", 100).uniqueIndex()
     val email = varchar("email", 255).uniqueIndex()
-    val passwordHash = varchar("password_hash", 255) // Добавлен отсутствующий столбец
+    val passwordHash = varchar("password_hash", 255)
     val telegramId = long("telegram_id").nullable()
     val createdAt = date("created_at")
     val updatedAt = date("updated_at")
+    
+    override val primaryKey = PrimaryKey(id)
 }

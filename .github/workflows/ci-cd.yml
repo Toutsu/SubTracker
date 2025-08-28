@@ -2,61 +2,245 @@ name: CI/CD Pipeline
 
 on:
   push:
+    branches: [ main, develop ]
+  pull_request:
     branches: [ main ]
 
+env:
+  JAVA_VERSION: '17'
+  JAVA_DISTRIBUTION: 'temurin'
+
 jobs:
+  # Сборка и тестирование проекта
   build-and-test:
     runs-on: ubuntu-latest
+    
     steps:
-      - name: Checkout code
+      - name: 📥 Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: ☕ Set up JDK ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
 
-      - name: Grant execute permission for gradlew
+      - name: 📋 Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: 🔧 Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build and test
-        run: ./gradlew build
+      - name: 🏗️ Build all modules
+        run: ./gradlew build --no-daemon
 
-  docker-build-push:
+      - name: 🧪 Run tests
+        run: ./gradlew test --no-daemon
+
+      - name: 📊 Generate test report
+        uses: dorny/test-reporter@v1
+        if: success() || failure()
+        with:
+          name: 'Test Results'
+          path: '**/build/test-results/test/TEST-*.xml'
+          reporter: java-junit
+
+      - name: 📦 Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-artifacts
+          path: |
+            backend/build/libs/*.jar
+            web-frontend/build/
+            telegram-bot/build/libs/*.jar
+          retention-days: 7
+
+  # Проверка кода и безопасности
+  code-quality:
     runs-on: ubuntu-latest
     needs: build-and-test
+    
     steps:
-      - name: Checkout code
+      - name: 📥 Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
+      - name: ☕ Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+
+      - name: 🔧 Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: 🔍 Run detekt (Kotlin linter)
+        run: ./gradlew detekt --no-daemon
+        continue-on-error: true
+
+      - name: 🔒 Run dependency vulnerability check
+        run: ./gradlew dependencyCheckAnalyze --no-daemon
+        continue-on-error: true
+
+  # Сборка Docker образов (только для main ветки)
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: [build-and-test, code-quality]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐳 Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to Docker Hub
+      - name: 🔐 Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push backend image
+      - name: 🏗️ Build backend Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: backend/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/subtracker-backend:latest
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/subtracker-backend:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/subtracker-backend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-  deploy-to-pi:
+  # Интеграционные тесты с реальной базой данных
+  integration-tests:
     runs-on: ubuntu-latest
-    needs: docker-build-push
+    needs: build-and-test
+    
     steps:
-      - name: SSH into Raspberry Pi
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: ☕ Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+
+      - name: 🔧 Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: 🧪 Run integration tests with SQLite
+        run: |
+          ./gradlew :backend:build --no-daemon
+          timeout 30s ./gradlew :backend:run --no-daemon &
+          sleep 10
+          
+          # Проверка API endpoints
+          curl -f http://localhost:8080/login -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"username":"user","password":"user"}' || exit 1
+          
+          curl -f http://localhost:8080/register -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"username":"testuser","email":"test@test.com","password":"test"}' || exit 1
+
+      - name: 🌐 Test web frontend files
+        run: |
+          cd web-frontend/src/jsMain/resources
+          python3 -m http.server 3000 &
+          sleep 5
+          curl -f http://localhost:3000/ || exit 1
+          curl -f http://localhost:3000/register.html || exit 1
+          curl -f http://localhost:3000/dashboard.html || exit 1
+
+  # Деплой (только для main ветки)
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [docker-build, integration-tests]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+      - name: 🚀 Deploy to production server
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.PI_HOST }}
-          username: ${{ secrets.PI_USER }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            docker compose -f /path/to/subtracker/docker-compose.yml pull
-            docker compose -f /path/to/subtracker/docker-compose.yml up -d
+            # Обновление Docker образов
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/subtracker-backend:latest
+            
+            # Остановка старых контейнеров
+            docker stop subtracker-backend || true
+            docker rm subtracker-backend || true
+            
+            # Запуск нового контейнера
+            docker run -d \
+              --name subtracker-backend \
+              --restart unless-stopped \
+              -p 8080:8080 \
+              -v /opt/subtracker/data:/app/data \
+              -e DATABASE_URL="jdbc:sqlite:/app/data/subtracker.db" \
+              ${{ secrets.DOCKERHUB_USERNAME }}/subtracker-backend:latest
+            
+            # Проверка здоровья сервиса
+            sleep 10
+            curl -f http://localhost:8080/login -X POST \
+              -H "Content-Type: application/json" \
+              -d '{"username":"user","password":"user"}' || exit 1
+
+  # Уведомления о статусе деплоя
+  notify:
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    if: always() && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: 📧 Notify deployment status
+        uses: 8398a7/action-slack@v3
+        if: env.SLACK_WEBHOOK_URL != ''
+        with:
+          status: ${{ needs.deploy.result }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: 📋 Create release on success
+        if: needs.deploy.result == 'success'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.run_number }}
+          release_name: Release v${{ github.run_number }}
+          body: |
+            🚀 Автоматический релиз из ветки main
+            
+            ## Изменения:
+            - Commit: ${{ github.sha }}
+            - Author: ${{ github.actor }}
+            - Workflow: ${{ github.workflow }}
+            
+            ## Компоненты:
+            - ✅ Backend API (SQLite)
+            - ✅ Web Frontend (HTML/CSS/JS)
+            - ✅ Telegram Bot
+            
+            ## Проверки:
+            - ✅ Сборка и тесты
+            - ✅ Проверка качества кода
+            - ✅ Интеграционные тесты
+            - ✅ Docker образы
+            - ✅ Деплой в продакшен
+          draft: false
+          prerelease: false

@@ -35,6 +35,13 @@ kotlin {
                 implementation("org.jetbrains.kotlin-wrappers:kotlin-browser:1.0.0-pre.710")
             }
         }
+        
+        jsTest {
+            dependencies {
+                implementation(kotlin("test"))
+                implementation(kotlin("test-js"))
+            }
+        }
     }
 }
 

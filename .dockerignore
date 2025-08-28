@@ -1,0 +1,67 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Документация
+README.md
+ЗАПУСК_ПРОЕКТА.md
+QUICK_START.md
+*.md
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+
+# Временные файлы
+*.tmp
+*.temp
+*.log
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Данные
+*.db
+*.sqlite
+*.sqlite3
+data/
+
+# Переменные окружения
+.env
+.env.local
+.env.production
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Kotlin/JS
+kotlin-js-store/
+
+# Тесты
+**/test-results/
+**/reports/
+
+# Локальные файлы
+local.properties

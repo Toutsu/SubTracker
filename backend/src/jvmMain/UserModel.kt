@@ -1,7 +1,6 @@
-import kotlinx.serialization.Serializable
+package backend
 
-@Serializable
-data class User(
+data class UserModel(
     val id: String,
     val username: String,
     val email: String,

@@ -1,7 +1,6 @@
 import backend.DatabaseFactory
 import backend.SubscriptionRepositoryImpl
-import backend.UserRepositoryImpl
-import backend.SecurityUtils
+import backend.UserRepository
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
@@ -9,6 +8,7 @@ import io.ktor.server.routing.*
 import io.ktor.server.response.*
 import io.ktor.server.request.*
 import io.ktor.server.plugins.contentnegotiation.*
+import io.ktor.server.plugins.cors.routing.*
 import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
 import io.ktor.serialization.kotlinx.json.*
@@ -42,14 +42,23 @@ data class CreateSubscriptionRequest(
 )
 
 @Serializable
+data class RegisterRequest(
+    val username: String,
+    val email: String,
+    val password: String
+)
+
+@Serializable
 data class LoginRequest(
     val username: String,
     val password: String
 )
 
 @Serializable
-data class LoginResponse(
-    val token: String
+data class AuthResponse(
+    val success: Boolean,
+    val message: String,
+    val token: String? = null
 )
 
 fun main() {
@@ -61,7 +70,7 @@ fun main() {
 
 fun Application.module() {
     val subscriptionRepository = SubscriptionRepositoryImpl()
-    val userRepository = UserRepositoryImpl()
+    val userRepository = UserRepository()
     
     // Конфигурация JWT
     val jwtSecret = "your_secret_key" // В продакшене использовать переменные окружения
@@ -92,32 +101,89 @@ fun Application.module() {
         json()
     }
     
+    install(CORS) {
+        allowHost("localhost:3000")
+        allowHost("127.0.0.1:3000")
+        allowHeader(HttpHeaders.ContentType)
+        allowHeader(HttpHeaders.Authorization)
+        allowMethod(HttpMethod.Options)
+        allowMethod(HttpMethod.Get)
+        allowMethod(HttpMethod.Post)
+        allowMethod(HttpMethod.Put)
+        allowMethod(HttpMethod.Delete)
+        allowCredentials = true
+    }
+    
     routing {
-        // Эндпоинт для входа
-        post("/login") {
-            val loginRequest = call.receive<LoginRequest>()
-            val user = userRepository.getUserByUsername(loginRequest.username)
-            
-            if (user != null && SecurityUtils.verifyPassword(loginRequest.password, user.passwordHash)) {
-                val token = JWT.create()
-                    .withAudience(jwtAudience)
-                    .withIssuer(jwtIssuer)
-                    .withClaim("username", user.username)
-                    .sign(Algorithm.HMAC256(jwtSecret))
-                call.respond(LoginResponse(token))
-            } else {
-                call.respond(HttpStatusCode.Unauthorized, "Invalid credentials")
-            }
+        // Health check endpoint для Docker
+        get("/health") {
+            call.respond(mapOf(
+                "status" to "UP",
+                "timestamp" to System.currentTimeMillis(),
+                "version" to "1.0.0",
+                "database" to "SQLite"
+            ))
         }
         
         // Эндпоинт для регистрации
         post("/register") {
-            val loginRequest = call.receive<LoginRequest>()
             try {
-                val user = userRepository.createUser(loginRequest.username, loginRequest.password)
-                call.respond(HttpStatusCode.Created, mapOf("message" to "User created"))
+                val registerRequest = call.receive<RegisterRequest>()
+                val user = userRepository.createUser(
+                    registerRequest.username, 
+                    registerRequest.email, 
+                    registerRequest.password
+                )
+                
+                if (user != null) {
+                    call.respond(AuthResponse(
+                        success = true,
+                        message = "Пользователь успешно зарегистрирован"
+                    ))
+                } else {
+                    call.respond(HttpStatusCode.BadRequest, AuthResponse(
+                        success = false,
+                        message = "Пользователь с таким именем или email уже существует"
+                    ))
+                }
             } catch (e: Exception) {
-                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "User creation failed: ${e.message}"))
+                call.respond(HttpStatusCode.InternalServerError, AuthResponse(
+                    success = false,
+                    message = "Ошибка регистрации: ${e.message}"
+                ))
+            }
+        }
+        
+        // Эндпоинт для входа
+        post("/login") {
+            try {
+                val loginRequest = call.receive<LoginRequest>()
+                val user = userRepository.authenticateUser(loginRequest.username, loginRequest.password)
+                
+                if (user != null) {
+                    val token = JWT.create()
+                        .withAudience(jwtAudience)
+                        .withIssuer(jwtIssuer)
+                        .withClaim("username", loginRequest.username)
+                        .withClaim("userId", user.id)
+                        .sign(Algorithm.HMAC256(jwtSecret))
+                        
+                    call.respond(AuthResponse(
+                        success = true,
+                        message = "Вход выполнен успешно",
+                        token = token
+                    ))
+                } else {
+                    call.respond(HttpStatusCode.Unauthorized, AuthResponse(
+                        success = false,
+                        message = "Неверное имя пользователя или пароль"
+                    ))
+                }
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.InternalServerError, AuthResponse(
+                    success = false,
+                    message = "Ошибка входа: ${e.message}"
+                ))
             }
         }
         

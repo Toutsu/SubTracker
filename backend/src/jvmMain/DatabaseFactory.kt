@@ -5,16 +5,19 @@ import com.zaxxer.hikari.HikariDataSource
 import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
+import java.security.MessageDigest
 import java.time.LocalDate
 
 object DatabaseFactory {
     fun init() {
-        val driverClassName = "org.postgresql.Driver"
-        val jdbcURL = System.getenv("DATABASE_URL") ?: "jdbc:postgresql://localhost:5432/subtracker"
-        val username = System.getenv("DATABASE_USER") ?: "subtracker_user"
-        val password = System.getenv("DATABASE_PASSWORD") ?: "password"
+        val driverClassName = System.getenv("DATABASE_DRIVER") ?: "org.sqlite.JDBC"
+        val jdbcURL = System.getenv("DATABASE_URL") ?: "jdbc:sqlite:subtracker.db"
+        val username = System.getenv("DATABASE_USER") ?: ""
+        val password = System.getenv("DATABASE_PASSWORD") ?: ""
         
         val config = HikariConfig().apply {
             this.driverClassName = driverClassName
@@ -33,6 +36,21 @@ object DatabaseFactory {
         // Создаем таблицы
         transaction {
             SchemaUtils.create(UserTable, SubscriptionTable)
+            
+            // Создаем тестового пользователя если его нет
+            val existingUser = UserTable.select { UserTable.username eq "user" }.singleOrNull()
+            if (existingUser == null) {
+                UserTable.insert {
+                    it[UserTable.id] = java.util.UUID.randomUUID().toString()
+                    it[UserTable.username] = "user"
+                    it[UserTable.email] = "user@test.com"
+                    it[UserTable.passwordHash] = hashPassword("user")
+                    it[UserTable.telegramId] = null
+                    it[UserTable.createdAt] = LocalDate.now()
+                    it[UserTable.updatedAt] = LocalDate.now()
+                }
+                println("Test user created: user/user")
+            }
         }
         
         println("Database initialized successfully")
@@ -44,5 +62,11 @@ object DatabaseFactory {
     fun close() {
         // HikariCP автоматически закрывает соединения
         println("Database connections closed")
+    }
+    
+    private fun hashPassword(password: String): String {
+        val md = MessageDigest.getInstance("SHA-256")
+        val hashBytes = md.digest(password.toByteArray())
+        return hashBytes.joinToString("") { "%02x".format(it) }
     }
 }

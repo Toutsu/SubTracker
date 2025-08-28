@@ -14,45 +14,47 @@ class SubscriptionRepositoryImpl {
     }
     
     suspend fun getSubscriptionsByUserId(userId: String): List<SubscriptionData> = DatabaseFactory.dbQuery {
-        SubscriptionTable.select { SubscriptionTable.userId eq UUID.fromString(userId) }
+        SubscriptionTable.select { SubscriptionTable.userId eq userId }
             .map { rowToSubscription(it) }
     }
     
     suspend fun addSubscription(subscription: SubscriptionData): SubscriptionData = DatabaseFactory.dbQuery {
-        val insertStatement = SubscriptionTable.insert {
-            it[userId] = UUID.fromString(subscription.userId)
-            it[name] = subscription.name
-            it[price] = subscription.price
-            it[currency] = subscription.currency
-            it[billingCycle] = subscription.billingCycle
-            it[nextPaymentDate] = subscription.nextPaymentDate
-            it[isActive] = subscription.isActive
-            it[createdAt] = LocalDate.now()
-            it[updatedAt] = LocalDate.now()
+        val subscriptionId = UUID.randomUUID().toString()
+        SubscriptionTable.insert {
+            it[SubscriptionTable.id] = subscriptionId
+            it[SubscriptionTable.userId] = subscription.userId
+            it[SubscriptionTable.name] = subscription.name
+            it[SubscriptionTable.price] = subscription.price
+            it[SubscriptionTable.currency] = subscription.currency
+            it[SubscriptionTable.billingCycle] = subscription.billingCycle
+            it[SubscriptionTable.nextPaymentDate] = subscription.nextPaymentDate
+            it[SubscriptionTable.isActive] = subscription.isActive
+            it[SubscriptionTable.createdAt] = LocalDate.now()
+            it[SubscriptionTable.updatedAt] = LocalDate.now()
         }
         
-        subscription.copy(id = insertStatement[SubscriptionTable.id].toString())
+        subscription.copy(id = subscriptionId)
     }
     
     suspend fun updateSubscription(id: String, subscription: SubscriptionData): Boolean = DatabaseFactory.dbQuery {
-        SubscriptionTable.update({ SubscriptionTable.id eq UUID.fromString(id) }) {
-            it[name] = subscription.name
-            it[price] = subscription.price
-            it[currency] = subscription.currency
-            it[billingCycle] = subscription.billingCycle
-            it[nextPaymentDate] = subscription.nextPaymentDate
-            it[isActive] = subscription.isActive
-            it[updatedAt] = LocalDate.now()
+        SubscriptionTable.update({ SubscriptionTable.id eq id }) {
+            it[SubscriptionTable.name] = subscription.name
+            it[SubscriptionTable.price] = subscription.price
+            it[SubscriptionTable.currency] = subscription.currency
+            it[SubscriptionTable.billingCycle] = subscription.billingCycle
+            it[SubscriptionTable.nextPaymentDate] = subscription.nextPaymentDate
+            it[SubscriptionTable.isActive] = subscription.isActive
+            it[SubscriptionTable.updatedAt] = LocalDate.now()
         } > 0
     }
     
     suspend fun deleteSubscription(id: String): Boolean = DatabaseFactory.dbQuery {
-        SubscriptionTable.deleteWhere { SubscriptionTable.id eq UUID.fromString(id) } > 0
+        SubscriptionTable.deleteWhere { SubscriptionTable.id eq id } > 0
     }
     
     private fun rowToSubscription(row: ResultRow): SubscriptionData = SubscriptionData(
-        id = row[SubscriptionTable.id].toString(),
-        userId = row[SubscriptionTable.userId].toString(),
+        id = row[SubscriptionTable.id],
+        userId = row[SubscriptionTable.userId],
         name = row[SubscriptionTable.name],
         price = row[SubscriptionTable.price],
         currency = row[SubscriptionTable.currency],
