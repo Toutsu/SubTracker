@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: arm64v8/postgres:15-alpine
+    container_name: subtracker-db
+    environment:
+      POSTGRES_DB: subtracker
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - subtracker-net
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: subtracker-backend
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/subtracker
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: password
+    depends_on:
+      - postgres
+    ports:
+      - "8080:8080"
+    networks:
+      - subtracker-net
+
+networks:
+  subtracker-net:
+    driver: bridge
+
+volumes:
+  postgres_data:

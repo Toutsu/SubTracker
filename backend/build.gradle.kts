@@ -3,6 +3,7 @@ plugins {
     kotlin("plugin.serialization") version "2.2.20-RC"
     id("io.ktor.plugin") version "2.3.0"
     application
+    id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 
 sourceSets {
@@ -29,6 +30,17 @@ kotlin {
     jvmToolchain(17)
 }
 
+tasks {
+    shadowJar {
+        archiveBaseName.set("backend")
+        archiveClassifier.set("")
+        archiveVersion.set("")
+        manifest {
+            attributes["Main-Class"] = "ApplicationKt"
+        }
+    }
+}
+
 dependencies {
     implementation(project(":shared"))
     
@@ -46,6 +58,9 @@ dependencies {
     implementation("com.zaxxer:HikariCP:5.1.0")
     
     implementation("io.ktor:ktor-server-netty:$ktorVersion")
+    // Добавлены зависимости для аутентификации
+    implementation("io.ktor:ktor-server-auth-jvm:$ktorVersion")
+    implementation("io.ktor:ktor-server-auth-jwt-jvm:$ktorVersion")
     
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")

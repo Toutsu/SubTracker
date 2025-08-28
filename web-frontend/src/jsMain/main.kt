@@ -1,11 +1,11 @@
 import kotlinx.browser.document
 import kotlinx.browser.window
+import kotlinx.browser.localStorage
 import kotlinx.coroutines.*
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 import org.w3c.dom.*
 import org.w3c.fetch.RequestInit
-import org.w3c.fetch.Response
 import kotlin.js.Promise
 
 @Serializable
@@ -30,7 +30,19 @@ data class CreateSubscriptionRequest(
     val nextPaymentDate: String
 )
 
+@Serializable
+data class LoginRequest(
+    val username: String,
+    val password: String
+)
+
+@Serializable
+data class LoginResponse(
+    val token: String
+)
+
 val API_BASE_URL = "http://localhost:8080"
+var jwtToken: String? = localStorage.getItem("jwtToken")
 
 fun main() {
     console.log("SubTracker Web Frontend started!")
@@ -43,10 +55,27 @@ fun main() {
 
 fun initializeApp() {
     setupEventListeners()
-    loadSubscriptions()
+    
+    if (jwtToken != null) {
+        showMainContent()
+        loadSubscriptions()
+    } else {
+        showLoginForm()
+    }
 }
 
 fun setupEventListeners() {
+    // Форма входа
+    document.getElementById("login-form")?.addEventListener("submit", { event ->
+        event.preventDefault()
+        login()
+    })
+    
+    // Кнопка выхода
+    document.getElementById("logout-btn")?.addEventListener("click", {
+        logout()
+    })
+    
     // Кнопка добавления подписки
     document.getElementById("add-subscription-btn")?.addEventListener("click", {
         showAddSubscriptionModal()
@@ -62,6 +91,76 @@ fun setupEventListeners() {
         event.preventDefault()
         addSubscription()
     })
+}
+
+fun showLoginForm() {
+    document.getElementById("login-container")?.let { 
+        (it as HTMLElement).style.display = "block"
+    }
+    document.getElementById("main-content")?.let { 
+        (it as HTMLElement).style.display = "none"
+    }
+}
+
+fun showMainContent() {
+    document.getElementById("login-container")?.let { 
+        (it as HTMLElement).style.display = "none"
+    }
+    document.getElementById("main-content")?.let { 
+        (it as HTMLElement).style.display = "block"
+    }
+}
+
+fun login() {
+    GlobalScope.launch {
+        try {
+            val username = (document.getElementById("username") as HTMLInputElement).value
+            val password = (document.getElementById("password") as HTMLInputElement).value
+            
+            val request = LoginRequest(username, password)
+            
+            val response = window.fetch("$API_BASE_URL/login", RequestInit(
+                method = "POST",
+                headers = js("({'Content-Type': 'application/json'})"),
+                body = Json.encodeToString(request)
+            )).await()
+            
+            if (response.ok) {
+                val jsonText = response.text().await()
+                val loginResponse = Json.decodeFromString<LoginResponse>(jsonText)
+                
+                // Сохраняем токен
+                jwtToken = loginResponse.token
+                localStorage.setItem("jwtToken", jwtToken!!)
+                
+                // Показываем основной контент
+                showMainContent()
+                loadSubscriptions()
+                
+                showSuccess("Успешный вход!")
+            } else {
+                val errorText = response.text().await()
+                showLoginError("Неверное имя пользователя или пароль")
+            }
+        } catch (e: Exception) {
+            console.error("Ошибка входа:", e)
+            showLoginError("Ошибка при входе в систему")
+        }
+    }
+}
+
+fun logout() {
+    jwtToken = null
+    localStorage.removeItem("jwtToken")
+    showLoginForm()
+    // Очищаем форму входа
+    (document.getElementById("login-form") as HTMLFormElement).reset()
+}
+
+fun showLoginError(message: String) {
+    val errorElement = document.getElementById("login-error") as HTMLDivElement
+    errorElement.textContent = message
+    errorElement.style.display = "block"
 }
 
 fun showAddSubscriptionModal() {
@@ -92,10 +191,22 @@ fun loadSubscriptions() {
 }
 
 suspend fun fetchSubscriptions(): List<Subscription> {
-    val response = window.fetch("$API_BASE_URL/subscriptions")
-        .await()
+    val headers = js("{}")
+    headers["Content-Type"] = "application/json"
+    jwtToken?.let {
+        headers["Authorization"] = "Bearer $it"
+    }
+    
+    val response = window.fetch("$API_BASE_URL/subscriptions", RequestInit(
+        headers = headers
+    )).await()
     
     if (!response.ok) {
+        if (response.status == 401.toShort()) {
+            // Неавторизован - выполняем выход
+            logout()
+            throw Exception("Требуется аутентификация")
+        }
         throw Exception("HTTP error! status: ${response.status}")
     }
     
@@ -110,7 +221,7 @@ fun addSubscription() {
             val formData = FormData(form)
             
             val request = CreateSubscriptionRequest(
-                userId = "user123", // В реальном приложении будет браться из сессии
+                userId = "current-user", // В реальном приложении будет браться из токена
                 name = formData.get("name") as String,
                 price = formData.get("price") as String,
                 currency = formData.get("currency") as String,
@@ -118,9 +229,15 @@ fun addSubscription() {
                 nextPaymentDate = formData.get("nextPaymentDate") as String
             )
             
+            val headers = js("{}")
+            headers["Content-Type"] = "application/json"
+            jwtToken?.let {
+                headers["Authorization"] = "Bearer $it"
+            }
+            
             val response = window.fetch("$API_BASE_URL/subscriptions", RequestInit(
                 method = "POST",
-                headers = js("({'Content-Type': 'application/json'})"),
+                headers = headers,
                 body = Json.encodeToString(request)
             )).await()
             
@@ -129,7 +246,11 @@ fun addSubscription() {
                 loadSubscriptions() // Перезагружаем список
                 showSuccess("Подписка успешно добавлена!")
             } else {
-                throw Exception("Ошибка при добавлении подписки")
+                if (response.status == 401.toShort()) {
+                    logout()
+                } else {
+                    throw Exception("Ошибка при добавлении подписки")
+                }
             }
         } catch (e: Exception) {
             console.error("Ошибка добавления подписки:", e)
@@ -185,15 +306,26 @@ fun deleteSubscription(id: String) {
     
     GlobalScope.launch {
         try {
+            val headers = js("{}")
+            headers["Content-Type"] = "application/json"
+            jwtToken?.let {
+                headers["Authorization"] = "Bearer $it"
+            }
+            
             val response = window.fetch("$API_BASE_URL/subscriptions/$id", RequestInit(
-                method = "DELETE"
+                method = "DELETE",
+                headers = headers
             )).await()
             
             if (response.ok) {
                 loadSubscriptions() // Перезагружаем список
                 showSuccess("Подписка удалена!")
             } else {
-                throw Exception("Ошибка при удалении подписки")
+                if (response.status == 401.toShort()) {
+                    logout()
+                } else {
+                    throw Exception("Ошибка при удалении подписки")
+                }
             }
         } catch (e: Exception) {
             console.error("Ошибка удаления подписки:", e)

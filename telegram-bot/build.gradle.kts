@@ -20,8 +20,6 @@ repositories {
     mavenCentral()
 }
 
-val telegramBotVersion = "7.0.0"
-
 kotlin {
     jvmToolchain(17)
 }
@@ -29,12 +27,18 @@ kotlin {
 dependencies {
     implementation(project(":shared"))
     
-    // Telegram Bot API
-    implementation("com.github.pengrad:java-telegram-bot-api:$telegramBotVersion")
+    // Telegram Bot API (ktgbotapi)
+    implementation("dev.inmo:tgbotapi:9.4.0")
     
     // Для работы с корутинами
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
     
     // Для сериализации JSON
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.0")
+    
+    // Для HTTP запросов к бэкенду
+    implementation("io.ktor:ktor-client-core:2.3.11")
+    implementation("io.ktor:ktor-client-cio:2.3.11")
+    implementation("io.ktor:ktor-client-content-negotiation:2.3.11")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.11")
 }
