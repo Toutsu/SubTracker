@@ -22,7 +22,7 @@ repositories {
 }
 
 val ktorVersion = "2.3.0"
-val exposedVersion = "0.50.0"
+val exposedVersion = "1.0.0-beta-2"
 val postgresqlVersion = "42.7.3"
 
 kotlin {
