@@ -13,7 +13,7 @@ class SubscriptionTest {
             id = "test-id",
             userId = "user123",
             name = "Test Service",
-            price = "15.99",
+            price = BigDecimal("15.99"),
             currency = "USD",
             billingCycle = "monthly",
             nextPaymentDate = "2024-12-25",
@@ -27,7 +27,7 @@ class SubscriptionTest {
         // Assert
         assertEquals(subscription.id, deserialized.id)
         assertEquals(subscription.name, deserialized.name)
-        assertEquals(subscription.price, deserialized.price)
+        assertEquals(0, subscription.price.compareTo(deserialized.price))
         assertEquals(subscription.currency, deserialized.currency)
         assertEquals(subscription.isActive, deserialized.isActive)
     }
@@ -38,7 +38,7 @@ class SubscriptionTest {
         val request = CreateSubscriptionRequest(
             userId = "user123",
             name = "Netflix",
-            price = "15.99",
+            price = BigDecimal("15.99"),
             currency = "USD",
             billingCycle = "monthly",
             nextPaymentDate = "2024-12-25"
@@ -51,7 +51,7 @@ class SubscriptionTest {
         // Assert
         assertEquals(request.userId, deserialized.userId)
         assertEquals(request.name, deserialized.name)
-        assertEquals(request.price, deserialized.price)
+        assertEquals(0, request.price.compareTo(deserialized.price))
         assertEquals(request.currency, deserialized.currency)
         assertEquals(request.billingCycle, deserialized.billingCycle)
         assertEquals(request.nextPaymentDate, deserialized.nextPaymentDate)

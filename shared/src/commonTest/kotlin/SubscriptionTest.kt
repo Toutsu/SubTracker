@@ -11,10 +11,10 @@ class SubscriptionTest {
             id = "test-123",
             userId = "user-456",
             name = "Test Subscription",
-            price = 19.99,
+            price = BigDecimal("19.99"),
             currency = "USD",
             billingCycle = BillingCycle.MONTHLY,
-            nextPaymentDate = "2024-12-25",
+            nextPaymentDate = LocalDate.of(2024, 12, 25),
             isActive = true
         )
         
@@ -22,10 +22,10 @@ class SubscriptionTest {
         assertEquals("test-123", subscription.id)
         assertEquals("user-456", subscription.userId)
         assertEquals("Test Subscription", subscription.name)
-        assertEquals(19.99, subscription.price)
+        assertEquals(BigDecimal("19.99"), subscription.price)
         assertEquals("USD", subscription.currency)
         assertEquals(BillingCycle.MONTHLY, subscription.billingCycle)
-        assertEquals("2024-12-25", subscription.nextPaymentDate)
+        assertEquals(LocalDate.of(2024, 12, 25), subscription.nextPaymentDate)
         assertEquals(true, subscription.isActive)
     }
     
