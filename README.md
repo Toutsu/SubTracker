@@ -236,12 +236,12 @@ POST /subscriptions
 ## 📞 Контакты
 
 - 📧 Email: hegin4@yandex.ru
-- 💬 Telegram: [@Toutsu](https://t.me/yourusername)
-- 🐙 GitHub: [@Toutsu](https://github.com/yourusername)
+- 💬 Telegram: [@Toutsu](https://t.me/toutsu)
+- 🐙 GitHub: [@Toutsu](https://github.com/toutsu)
 
 ---
 
 ⭐ **Поставьте звездочку, если проект был полезен!**
 
 ## CI/CD Статус
-[![CI/CD Pipeline](https://github.com/your-username/SubTracker/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/your-username/SubTracker/actions/workflows/ci-cd.yml)
+[![CI/CD Pipeline](https://github.com/toutsu/SubTracker/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/toutsu/SubTracker/actions/workflows/ci-cd.yml)
