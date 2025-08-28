@@ -20,6 +20,7 @@ object SubscriptionTable : UUIDTable("subscriptions") {
 object UserTable : UUIDTable("users") {
     val username = varchar("username", 100).uniqueIndex()
     val email = varchar("email", 255).uniqueIndex()
+    val passwordHash = varchar("password_hash", 255) // Добавлен отсутствующий столбец
     val telegramId = long("telegram_id").nullable()
     val createdAt = date("created_at")
     val updatedAt = date("updated_at")

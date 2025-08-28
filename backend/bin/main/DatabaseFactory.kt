@@ -13,7 +13,7 @@ object DatabaseFactory {
     fun init() {
         val driverClassName = "org.postgresql.Driver"
         val jdbcURL = System.getenv("DATABASE_URL") ?: "jdbc:postgresql://localhost:5432/subtracker"
-        val username = System.getenv("DATABASE_USER") ?: "postgres"
+        val username = System.getenv("DATABASE_USER") ?: "subtracker_user"
         val password = System.getenv("DATABASE_PASSWORD") ?: "password"
         
         val config = HikariConfig().apply {

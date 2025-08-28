@@ -1,6 +1,6 @@
 plugins {
-    kotlin("multiplatform") version "2.2.20-RC"
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.2.20-RC"
+    kotlin("multiplatform") version "2.0.0"
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.0.0"
 }
 
 repositories {

@@ -62,7 +62,7 @@ SubTracker/
 ### Предварительные требования
 
 - ☕ **Java 17+**
-- 🐘 **PostgreSQL 13+**
+- 🐘 **PostgreSQL 13+** (или Docker для запуска БД)
 - 📦 **Node.js 16+** (для web-frontend)
 
 ### 1. Клонирование и сборка
@@ -73,12 +73,15 @@ cd SubTracker
 ./gradlew build
 ```
 
-### 2. Настройка базы данных
+### 2. Запуск базы данных (Docker)
 
-```sql
-CREATE DATABASE subtracker;
-CREATE USER subtracker_user WITH PASSWORD 'password';
-GRANT ALL PRIVILEGES ON DATABASE subtracker TO subtracker_user;
+```bash
+docker run --name subtracker-db \
+  -e POSTGRES_USER=subtracker_user \
+  -e POSTGRES_PASSWORD=password \
+  -e POSTGRES_DB=subtracker \
+  -p 5432:5432 \
+  -d postgres:13
 ```
 
 ### 3. Настройка переменных окружения
@@ -93,7 +96,7 @@ cp env.example .env
 
 ```bash
 export DATABASE_URL="jdbc:postgresql://localhost:5432/subtracker"
-export DATABASE_USER="postgres"
+export DATABASE_USER="subtracker_user"
 export DATABASE_PASSWORD="password"
 export TELEGRAM_BOT_TOKEN="your_bot_token_from_botfather"
 ```
@@ -113,10 +116,10 @@ export TELEGRAM_BOT_TOKEN="your_bot_token_from_botfather"
 ./gradlew :telegram-bot:run
 ```
 
-### 5. Запуск через Docker (для Raspberry Pi)
+### 5. Запуск через Docker Compose (для полного развертывания)
 
-1. Установите Docker и Docker Compose на Raspberry Pi
-2. Склонируйте репозиторий на устройство
+1. Установите Docker и Docker Compose
+2. Склонируйте репозиторий
 3. Перейдите в корневую директорию проекта
 4. Запустите сервисы:
 ```bash
@@ -140,6 +143,16 @@ docker compose up -d
    - PI_USER (пользователь Raspberry Pi)
    - SSH_PRIVATE_KEY (приватный ключ для доступа к Raspberry Pi)
 3. При push в main ветку будет выполнено развёртывание
+
+### Альтернатива: Ручная настройка PostgreSQL
+
+Если вы предпочитаете установить PostgreSQL вручную:
+
+```sql
+CREATE DATABASE subtracker;
+CREATE USER subtracker_user WITH PASSWORD 'password';
+GRANT ALL PRIVILEGES ON DATABASE subtracker TO subtracker_user;
+```
 
 ## 📚 API Документация
 

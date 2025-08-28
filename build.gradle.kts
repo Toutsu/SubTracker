@@ -1,6 +1,6 @@
 plugins {
     // Ключевой плагин для KMP
-    kotlin("multiplatform") version "2.2.20-RC"
+    kotlin("multiplatform") version "2.0.0"
 }
 
 repositories {

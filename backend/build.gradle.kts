@@ -1,6 +1,6 @@
 plugins {
     kotlin("jvm")
-    kotlin("plugin.serialization") version "2.2.20-RC"
+    kotlin("plugin.serialization") version "2.0.0"
     id("io.ktor.plugin") version "2.3.0"
     application
     id("com.github.johnrengelman.shadow") version "8.1.1"
@@ -23,7 +23,7 @@ repositories {
 }
 
 val ktorVersion = "2.3.0"
-val exposedVersion = "1.0.0-beta-2"
+val exposedVersion = "0.41.1"
 val postgresqlVersion = "42.7.3"
 
 kotlin {

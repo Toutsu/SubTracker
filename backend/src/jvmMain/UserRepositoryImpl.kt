@@ -23,10 +23,11 @@ class UserRepositoryImpl {
     suspend fun createUser(username: String, password: String): User {
         return newSuspendedTransaction {
             val hash = SecurityUtils.hashPassword(password)
-            val id = UserTable.insert {
+            val result = UserTable.insert {
                 it[UserTable.username] = username
-                it[passwordHash] = hash
-            } get UserTable.id
+                it[UserTable.passwordHash] = hash
+            }
+            val id = result[UserTable.id]
 
             User(
                 id = id.toString(),
