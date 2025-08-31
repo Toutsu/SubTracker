@@ -79,3 +79,7 @@ target/
 
 # Kotlin Multiplatform
 kotlin-js-store/
+  
+# Cursor and RooCode rules  
+.cursor/rules/  
+.roo/rules/ 
