@@ -83,3 +83,7 @@ kotlin-js-store/
 # Cursor and RooCode rules  
 .cursor/rules/  
 .roo/rules/ 
+  
+# Cursor and RooCode rules for all modules  
+**/.cursor/  
+**/.roo/ 
