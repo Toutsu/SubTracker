@@ -184,6 +184,9 @@ jobs:
             docker stop subtracker-backend || true
             docker rm subtracker-backend || true
             
+            # Создание бэкапа базы данных перед обновлением
+            docker exec subtracker-backend cp /app/data/subtracker.db /app/data/subtracker.db.backup.$(date +%Y%m%d_%H%M%S) || true
+            
             # Запуск нового контейнера
             docker run -d \
               --name subtracker-backend \
@@ -191,13 +194,23 @@ jobs:
               -p 8080:8080 \
               -v /opt/subtracker/data:/app/data \
               -e DATABASE_URL="jdbc:sqlite:/app/data/subtracker.db" \
+              -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
               ${{ secrets.DOCKERHUB_USERNAME }}/subtracker-backend:latest
             
             # Проверка здоровья сервиса
             sleep 10
+            curl -f http://localhost:8080/health || exit 1
+            
+            # Проверка API endpoints
             curl -f http://localhost:8080/login -X POST \
               -H "Content-Type: application/json" \
               -d '{"username":"user","password":"user"}' || exit 1
+            
+            # Мониторинг состояния приложения
+            docker ps | grep subtracker-backend || exit 1
+            
+            # Проверка логов на наличие ошибок
+            docker logs subtracker-backend 2>&1 | grep -i error || true
 
   # Уведомления о статусе деплоя
   notify:

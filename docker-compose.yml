@@ -17,7 +17,7 @@ services:
       - DATABASE_DRIVER=org.sqlite.JDBC
       - DATABASE_USER=
       - DATABASE_PASSWORD=
-      - JWT_SECRET=${JWT_SECRET:-default-secret-change-in-production}
+      - JWT_SECRET=${JWT_SECRET}
       - JWT_ISSUER=SubTracker
       - JWT_AUDIENCE=users
       - JWT_REALM=SubTracker
@@ -67,7 +67,3 @@ services:
 networks:
   subtracker-network:
     driver: bridge
-
-volumes:
-  subtracker-data:
-    driver: local
