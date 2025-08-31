@@ -1,7 +1,5 @@
 # SubTracker
 
-[![CI/CD Pipeline](https://github.com/username/SubTracker/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/username/SubTracker/actions/workflows/ci-cd.yml)
-
 **SubTracker** - это современное приложение для отслеживания подписок и управления расходами. Проект включает в себя backend API, веб-интерфейс и Telegram бота.
 
 ## ✨ Возможности
