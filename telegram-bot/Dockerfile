@@ -35,9 +35,5 @@ USER appuser
 # Установка правильного пути для Python
 ENV PATH=/home/appuser/.local/bin:$PATH
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:8081/health || exit 1
-
 # Команда запуска
 CMD ["python", "run_bot.py"]
