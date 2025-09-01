@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: web-frontend
-        image: subtracker-frontend:latest
+        image: subtracker-frontend:v1.0
         imagePullPolicy: Never
         ports:
         - containerPort: 3000
