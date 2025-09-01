@@ -104,6 +104,15 @@ class SubTrackerBot:
         # Регистрация обработчиков
         self.register_handlers()
     
+    async def health_check(self, request):
+        """Health check endpoint"""
+        return web.json_response({
+            "status": "UP",
+            "timestamp": int(datetime.now().timestamp() * 1000),
+            "version": "1.0.0",
+            "component": "telegram-bot"
+        })
+    
     def register_handlers(self):
         """Регистрация обработчиков команд и сообщений"""
         # Команды
@@ -127,19 +136,9 @@ class SubTrackerBot:
         # Обработка всех остальных текстовых сообщений
         self.dp.message(F.text)(self.handle_text)
     
-    async def health_check(self, request):
-        """Health check endpoint"""
-        return web.json_response({
-            "status": "UP",
-            "timestamp": int(datetime.now().timestamp() * 1000),
-            "version": "1.0.0",
-            "component": "telegram-bot"
-        })
-    
     async def start(self):
         """Запуск бота"""
         print("Starting Telegram Bot...")
-        print("Bot is running... Press Ctrl+C to stop")
         
         # Запуск веб-сервера в отдельной задаче
         runner = web.AppRunner(self.app)
@@ -147,7 +146,8 @@ class SubTrackerBot:
         site = web.TCPSite(runner, '0.0.0.0', 8081)
         await site.start()
         
-        # Запуск бота
+        print("Health check server is running on port 8081")
+        print("Bot is running... Press Ctrl+C to stop")
         await self.dp.start_polling(self.bot)
     
     async def handle_start_command(self, message: Message, state: FSMContext):
