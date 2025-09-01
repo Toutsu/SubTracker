@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-frontend
+  namespace: subtracker
+  labels:
+    app: web-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-frontend
+  template:
+    metadata:
+      labels:
+        app: web-frontend
+    spec:
+      containers:
+      - name: web-frontend
+        image: subtracker-frontend:latest
+        ports:
+        - containerPort: 3000
+        env:
+        # Configuration from ConfigMap
+        - name: NEXT_PUBLIC_API_BASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: subtracker-config
+              key: NEXT_PUBLIC_API_BASE_URL
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 60
+          periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-frontend
+  namespace: subtracker
+  labels:
+    app: web-frontend
+spec:
+  selector:
+    app: web-frontend
+  ports:
+ - protocol: TCP
+    port: 3000
+    targetPort: 3000
+ type: ClusterIP

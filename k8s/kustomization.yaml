@@ -1,0 +1,41 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Namespace for all resources
+namespace: subtracker
+
+# Common labels to add to all resources
+commonLabels:
+  app: subtracker
+
+# List of resource files to include
+resources:
+- configmap.yaml
+- secret.yaml
+- postgresql.yaml
+- redis.yaml
+- backend.yaml
+- web-frontend.yaml
+- telegram-bot.yaml
+- ingress.yaml
+
+# ConfigMap generator (alternative to separate configmap.yaml)
+# configMapGenerator:
+# - name: subtracker-config
+#   literals:
+#   - DATABASE_DRIVER=org.postgresql.Driver
+#   - DATABASE_URL=jdbc:postgresql://postgresql:5432/subtracker
+#   - JWT_ISSUER=SubTracker
+#   - JWT_AUDIENCE=users
+#   - JWT_REALM=SubTracker
+#   - NEXT_PUBLIC_API_BASE_URL=http://backend:8080
+#   - BACKEND_API_URL=http://backend:8080
+
+# Secret generator (alternative to separate secret.yaml)
+# secretGenerator:
+# - name: subtracker-secrets
+#   literals:
+#   - JWT_SECRET=your_super_secret_key_change_in_production
+#   - TELEGRAM_BOT_TOKEN=your_bot_token_from_botfather
+#   - DATABASE_USER=subtracker_user
+#   - DATABASE_PASSWORD=secure_password
