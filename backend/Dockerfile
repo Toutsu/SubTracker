@@ -1,34 +1,29 @@
 # Многоэтапная сборка для оптимизации размера образа
-FROM gradle:8.4-jdk17 AS build
+FROM maven:3.9.4-amazoncorretto-17 AS build
 
 # Установка рабочей директории
 WORKDIR /app
 
 # Копирование файлов сборки
-COPY build.gradle.kts settings.gradle.kts ./
-COPY gradle gradle
-COPY gradlew gradlew.bat ./
-
-# Копирование исходного кода всех модулей
-COPY shared/ shared/
-COPY backend/ backend/
+COPY pom.xml ./
 
 # Предварительная загрузка зависимостей (для кэширования Docker слоев)
-RUN gradle dependencies --no-daemon || true
+RUN mvn dependency:go-offline -B
+
+# Копирование исходного кода
+COPY src/ src/
 
 # Сборка приложения
-RUN gradle :backend:shadowJar --no-daemon
+RUN mvn clean package -DskipTests
 
 # Финальный образ
-FROM openjdk:17-jre-slim
+FROM amazoncorretto:17-alpine
 
 # Установка необходимых пакетов
-RUN apt-get update && \
-    apt-get install -y curl && \
-    rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache curl
 
 # Создание пользователя для безопасности
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+RUN addgroup -S appuser && adduser -S appuser -G appuser
 
 # Создание рабочей директории
 WORKDIR /app
@@ -37,7 +32,7 @@ WORKDIR /app
 RUN mkdir -p /app/data && chown -R appuser:appuser /app
 
 # Копирование JAR файла из этапа сборки
-COPY --from=build /app/backend/build/libs/backend.jar /app/app.jar
+COPY --from=build /app/target/subtracker-backend-0.0.1-SNAPSHOT.jar /app/app.jar
 
 # Переключение на пользователя appuser
 USER appuser

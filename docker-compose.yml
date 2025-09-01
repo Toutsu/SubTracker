@@ -1,11 +1,11 @@
 version: '3.8'
 
 services:
-  # Backend API сервер
+ # Backend API сервер
   backend:
     build:
-      context: .
-      dockerfile: backend/Dockerfile
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: subtracker-backend
     restart: unless-stopped
     ports:
@@ -30,16 +30,15 @@ services:
     networks:
       - subtracker-network
 
-  # Web Frontend (nginx для статических файлов)
+  # Web Frontend
   frontend:
-    image: nginx:alpine
+    build:
+      context: ./web-frontend
+      dockerfile: Dockerfile
     container_name: subtracker-frontend
     restart: unless-stopped
     ports:
-      - "3000:80"
-    volumes:
-      - ./web-frontend/src/jsMain/resources:/usr/share/nginx/html:ro
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - "3000:3000"
     depends_on:
       backend:
         condition: service_healthy
@@ -49,8 +48,8 @@ services:
   # Telegram Bot (опционально)
   telegram-bot:
     build:
-      context: .
-      dockerfile: telegram-bot/Dockerfile
+      context: ./telegram-bot
+      dockerfile: Dockerfile
     container_name: subtracker-bot
     restart: unless-stopped
     environment:
