@@ -8,8 +8,7 @@ SubTracker состоит из нескольких независимых мо�
 SubTracker/
 ├── 🖥️ backend/             # REST API (Kotlin + Spring Boot 3 + SQLite/PostgreSQL)
 ├── 🌐 web-frontend/        # Веб-интерфейс (Next.js + TypeScript)
-├── 🤖 telegram-bot/        # Telegram бот (Python + aiogram)
-└── 🧪 tests/               # Тесты для всех модулей
+└── 🤖 telegram-bot/        # Telegram бот (Python + aiogram)
 ```
 
 ### 🔧 Модули

@@ -1,0 +1,36 @@
+spring:
+  datasource:
+    driver-class-name: ${DATABASE_DRIVER:org.sqlite.JDBC}
+    url: ${DATABASE_URL:jdbc:sqlite:subtracker.db}
+    username: ${DATABASE_USER:}
+    password: ${DATABASE_PASSWORD:}
+    hikari:
+      maximum-pool-size: 3
+      auto-commit: false
+      transaction-isolation: TRANSACTION_REPEATABLE_READ
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    open-in-view: false
+    database-platform: org.hibernate.community.dialect.SQLiteDialect
+  
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+  
+  security:
+    jwt:
+      secret: ${JWT_SECRET:hW3l9e0bZk6Xg5cFqT1V4sYz8pD2wJ7mUOQyA9vN3I=}
+      issuer: ${JWT_ISSUER:SubTracker}
+      audience: ${JWT_AUDIENCE:users}
+      realm: ${JWT_REALM:ktor.io}
+
+server:
+  port: 8080
+
+logging:
+  level:
+    com.subtracker: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.security: DEBUG
