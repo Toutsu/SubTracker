@@ -4,7 +4,7 @@ from typing import Dict, Optional, Any
 from dataclasses import dataclass, asdict
 from enum import Enum
 import aiohttp
-from aiohttp import ClientSession
+from aiohttp import ClientSession, web
 import json
 from datetime import datetime
 from dotenv import load_dotenv
@@ -97,6 +97,10 @@ class SubTrackerBot:
         # Хранилище состояний пользователей
         self.user_tokens: Dict[int, str] = {}  # chat_id -> JWT token
         
+        # Инициализация веб-сервера для health check
+        self.app = web.Application()
+        self.app.router.add_get('/health', self.health_check)
+        
         # Регистрация обработчиков
         self.register_handlers()
     
@@ -123,10 +127,27 @@ class SubTrackerBot:
         # Обработка всех остальных текстовых сообщений
         self.dp.message(F.text)(self.handle_text)
     
+    async def health_check(self, request):
+        """Health check endpoint"""
+        return web.json_response({
+            "status": "UP",
+            "timestamp": int(datetime.now().timestamp() * 1000),
+            "version": "1.0.0",
+            "component": "telegram-bot"
+        })
+    
     async def start(self):
         """Запуск бота"""
         print("Starting Telegram Bot...")
         print("Bot is running... Press Ctrl+C to stop")
+        
+        # Запуск веб-сервера в отдельной задаче
+        runner = web.AppRunner(self.app)
+        await runner.setup()
+        site = web.TCPSite(runner, '0.0.0.0', 8081)
+        await site.start()
+        
+        # Запуск бота
         await self.dp.start_polling(self.bot)
     
     async def handle_start_command(self, message: Message, state: FSMContext):
