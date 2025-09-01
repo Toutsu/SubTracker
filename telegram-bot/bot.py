@@ -92,7 +92,7 @@ class SubTrackerBot:
         self.dp = Dispatcher(storage=MemoryStorage())
         
         # Базовый URL API
-        self.api_base_url = "http://localhost:8080"
+        self.api_base_url = os.getenv("BACKEND_API_URL", "http://backend:8080")
         
         # Хранилище состояний пользователей
         self.user_tokens: Dict[int, str] = {}  # chat_id -> JWT token
