@@ -219,7 +219,7 @@ jobs:
           cd web-frontend
           npm ci
           npm run build
-          npx serve -s out & 
+          npx serve -s .next & 
           sleep 5
           curl -f http://localhost:3000/ || exit 1
 
@@ -271,7 +271,7 @@ jobs:
             docker ps | grep subtracker-backend || exit 1
             
             # Проверка логов на наличие ошибок
-            docker logs subtracker-backend 2>&1 | grep -i error || true
+            docker logs subtracker-backend 2>&1 | grep -i error || echo "No errors found in logs"
 
   # Уведомления о статусе деплоя
  notify:
