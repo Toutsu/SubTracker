@@ -45,7 +45,6 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8080    # URL backend API
 
 **Volumes:**
 - `./data:/app/data` - персистентное хранение SQLite БД
-- `./web-frontend/.next:/app/.next:ro` - статические файлы Next.js
 
 **Networks:**
 - `subtracker-network` - внутренняя сеть для межсервисного взаимодействия
@@ -64,14 +63,14 @@ healthcheck:
 
 1. **Требования:**
    - Java 17+
-   - Python 3.8+
-   - Node.js 16+
-   - Maven 3.8+
+   - Python 3.11+
+   - Node.js 20+
+   - Maven 3.9+
 
 2. **Запуск Backend:**
    ```bash
    cd backend
-   mvn spring-boot:run
+   ./mvnw spring-boot:run
    # Доступен на http://localhost:8080
    ```
 
@@ -129,14 +128,14 @@ healthcheck:
    JWT_SECRET=$(openssl rand -hex 32)
    
    # Настройка CORS для продакшн домена
-   # Обновить allowedOrigins в CorsConfig.kt
+   # Обновить allowedOriginPatterns в SecurityConfig.kt
    ```
 
 3. **Сборка и запуск в продакшене:**
    ```bash
    # Сборка backend
    cd backend
-   mvn clean package
+   ./mvnw clean package
    
    # Сборка frontend
    cd web-frontend
@@ -144,7 +143,7 @@ healthcheck:
    
    # Запуск приложений
    # Backend:
-   java -jar backend/target/backend-*.jar
+   java -jar backend/target/*.jar
    
    # Frontend:
    npm start
@@ -238,59 +237,105 @@ python -m pytest --cov=.
 
 ### CI/CD Pipeline
 
-Проект готов для интеграции с GitHub Actions:
+Проект использует GitHub Actions для автоматизации CI/CD:
+
 - Автоматические тесты при каждом push
 - Статический анализ кода
 - Сборка Docker образов
 - Деплой в staging/production окружения
 
-Пример workflow для GitHub Actions:
-```yaml
-name: CI/CD Pipeline
+Pipeline состоит из следующих этапов:
 
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+1. **build-and-test** - Сборка и тестирование всех компонентов
+2. **code-quality** - Проверка качества кода и уязвимостей
+3. **docker-build** - Сборка Docker образов (только для main ветки)
+4. **integration-tests** - Интеграционные тесты с реальной базой данных
+5. **deploy** - Деплой в продакшен (только для main ветки)
+6. **notify** - Уведомления о результатах деплоя
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v2
-    
-    - name: Set up JDK 17
-      uses: actions/setup-java@v2
-      with:
-        java-version: '17'
-        distribution: 'adopt'
-    
-    - name: Set up Node.js
-      uses: actions/setup-node@v2
-      with:
-        node-version: '16'
-    
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.8'
-    
-    - name: Build backend
-      run: cd backend && mvn clean package
-    
-    - name: Test backend
-      run: cd backend && mvn test
-    
-    - name: Install frontend dependencies
-      run: cd web-frontend && npm install
-    
-    - name: Test frontend
-      run: cd web-frontend && npm test
-    
-    - name: Install bot dependencies
-      run: cd telegram-bot && pip install -r requirements.txt
-    
-    - name: Test bot
-      run: cd telegram-bot && python -m pytest
+Workflow файл: `.github/workflows/ci-cd.yml`
+
+### Мониторинг и алертинг
+
+#### Health Checks
+- Backend: `/health` endpoint
+- Frontend: доступность статических файлов
+- Telegram Bot: периодическая проверка соединения с API
+
+#### Логирование
+- Все сервисы логируют в stdout/stderr
+- Для продакшена рекомендуется использовать централизованное логирование (ELK, Grafana Loki)
+
+#### Метрики
+- JVM метрики для backend (через Spring Boot Actuator)
+- Custom метрики для бизнес-логики
+- Метрики производительности API
+
+### Backup и восстановление
+
+#### База данных
+```bash
+# Создание бэкапа SQLite
+sqlite3 subtracker.db ".backup subtracker.db.backup.$(date +%Y%m%d_%H%M%S)"
+
+# Восстановление из бэкапа
+cp subtracker.db.backup.latest subtracker.db
+```
+
+#### Конфигурации
+- Все конфигурации хранятся в переменных окружения
+- Используйте secrets manager для продакшена
+
+### Rollback процедур
+
+1. **Docker контейнеры:**
+   ```bash
+   # Остановка текущего контейнера
+   docker stop subtracker-backend
+   
+   # Запуск предыдущей версии
+   docker run -d --name subtracker-backend-old subtracker-backend:v1.0.0
+   ```
+
+2. **База данных:**
+   ```bash
+   # Восстановление из последнего бэкапа
+   cp /backups/subtracker.db.backup.latest /app/data/subtracker.db
+   ```
+
+### Troubleshooting
+
+#### Частые проблемы и их решения
+
+1. **Ошибка подключения к базе данных:**
+   - Проверьте переменные окружения DATABASE_*
+   - Убедитесь, что PostgreSQL запущен и доступен
+
+2. **Ошибка авторизации:**
+   - Проверьте JWT_SECRET
+   - Убедитесь, что токен не истек
+
+3. **Проблемы с Telegram ботом:**
+   - Проверьте TELEGRAM_BOT_TOKEN
+   - Убедитесь, что бот имеет доступ к интернету
+
+4. **Проблемы с фронтендом:**
+   - Проверьте NEXT_PUBLIC_API_BASE_URL
+   - Убедитесь, что backend доступен
+
+### Security Best Practices
+
+1. **Secrets Management:**
+   - Никогда не храните секреты в коде
+   - Используйте GitHub Secrets для CI/CD
+   - Используйте secrets manager в продакшене
+
+2. **Network Security:**
+   - Ограничьте доступ к портам
+   - Используйте HTTPS в продакшене
+   - Настройте CORS правильно
+
+3. **Application Security:**
+   - Регулярно обновляйте зависимости
+   - Используйте статический анализ кода
+   - Проводите penetration testing

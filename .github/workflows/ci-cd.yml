@@ -9,6 +9,8 @@ on:
 env:
   JAVA_VERSION: '17'
   JAVA_DISTRIBUTION: 'temurin'
+  NODE_VERSION: '20'
+  PYTHON_VERSION: '3.11'
 
 jobs:
   # Сборка и тестирование проекта
@@ -24,32 +26,74 @@ jobs:
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: 'maven'
 
-      - name: 📋 Cache Gradle dependencies
-        uses: actions/cache@v4
+      - name: 🐍 Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
         with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: 🔧 Grant execute permission for gradlew
-        run: chmod +x gradlew
+      - name: 🧱 Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: web-frontend/package-lock.json
 
-      - name: 🏗️ Build all modules
-        run: ./gradlew build --no-daemon
+      - name: 🔧 Grant execute permission for mvnw
+        run: |
+          cd backend
+          chmod +x mvnw
 
-      - name: 🧪 Run tests
-        run: ./gradlew test --no-daemon
+      - name: 🏗️ Build backend with Maven
+        run: |
+          cd backend
+          ./mvnw clean package -DskipTests
+
+      - name: 🧪 Run backend tests
+        run: |
+          cd backend
+          ./mvnw test
+
+      - name: 📦 Install frontend dependencies
+        run: |
+          cd web-frontend
+          npm ci
+
+      - name: 🎨 Lint frontend code
+        run: |
+          cd web-frontend
+          npm run lint
+
+      - name: 🧪 Run frontend tests
+        run: |
+          cd web-frontend
+          npm test
+
+      - name: 🏗️ Build frontend
+        run: |
+          cd web-frontend
+          npm run build
+
+      - name: 🐍 Install bot dependencies
+        run: |
+          cd telegram-bot
+          pip install -r requirements.txt
+          pip install -r requirements-test.txt
+
+      - name: 🧪 Run bot tests
+        run: |
+          cd telegram-bot
+          python -m pytest
 
       - name: 📊 Generate test report
         uses: dorny/test-reporter@v1
         if: success() || failure()
         with:
           name: 'Test Results'
-          path: '**/build/test-results/test/TEST-*.xml'
+          path: |
+            backend/target/surefire-reports/*.xml
+            web-frontend/junit.xml
           reporter: java-junit
 
       - name: 📦 Upload build artifacts
@@ -58,12 +102,12 @@ jobs:
         with:
           name: build-artifacts
           path: |
-            backend/build/libs/*.jar
-            web-frontend/build/
-            telegram-bot/build/libs/*.jar
+            backend/target/*.jar
+            web-frontend/.next/
+            telegram-bot/dist/
           retention-days: 7
 
-  # Проверка кода и безопасности
+ # Проверка кода и безопасности
   code-quality:
     runs-on: ubuntu-latest
     needs: build-and-test
@@ -77,20 +121,20 @@ jobs:
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: ${{ env.JAVA_DISTRIBUTION }}
-
-      - name: 🔧 Grant execute permission for gradlew
-        run: chmod +x gradlew
+          cache: 'maven'
 
       - name: 🔍 Run detekt (Kotlin linter)
-        run: ./gradlew detekt --no-daemon
-        continue-on-error: true
+        run: |
+          cd backend
+          ./mvnw detekt:check || true
 
       - name: 🔒 Run dependency vulnerability check
-        run: ./gradlew dependencyCheckAnalyze --no-daemon
-        continue-on-error: true
+        run: |
+          cd backend
+          ./mvnw dependency-check:check || true
 
   # Сборка Docker образов (только для main ветки)
-  docker-build:
+ docker-build:
     runs-on: ubuntu-latest
     needs: [build-and-test, code-quality]
     if: github.ref == 'refs/heads/main'
@@ -108,15 +152,25 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: 🏗️ Build backend Docker image
+      - name: 📦 Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/subtracker-backend
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: 🏗️ Build and push backend Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: backend/Dockerfile
           push: true
-          tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/subtracker-backend:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/subtracker-backend:${{ github.sha }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -125,6 +179,20 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-and-test
     
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: subtracker_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
@@ -134,33 +202,26 @@ jobs:
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: 'maven'
 
-      - name: 🔧 Grant execute permission for gradlew
-        run: chmod +x gradlew
-
-      - name: 🧪 Run integration tests with SQLite
+      - name: 🔧 Grant execute permission for mvnw
         run: |
-          ./gradlew :backend:build --no-daemon
-          timeout 30s ./gradlew :backend:run --no-daemon &
-          sleep 10
-          
-          # Проверка API endpoints
-          curl -f http://localhost:8080/login -X POST \
-            -H "Content-Type: application/json" \
-            -d '{"username":"user","password":"user"}' || exit 1
-          
-          curl -f http://localhost:8080/register -X POST \
-            -H "Content-Type: application/json" \
-            -d '{"username":"testuser","email":"test@test.com","password":"test"}' || exit 1
+          cd backend
+          chmod +x mvnw
+
+      - name: 🧪 Run integration tests with PostgreSQL
+        run: |
+          cd backend
+          ./mvnw verify -Dspring.profiles.active=test
 
       - name: 🌐 Test web frontend files
         run: |
-          cd web-frontend/src/jsMain/resources
-          python3 -m http.server 3000 &
+          cd web-frontend
+          npm ci
+          npm run build
+          npx serve -s out & 
           sleep 5
           curl -f http://localhost:3000/ || exit 1
-          curl -f http://localhost:3000/register.html || exit 1
-          curl -f http://localhost:3000/dashboard.html || exit 1
 
   # Деплой (только для main ветки)
   deploy:
@@ -213,7 +274,7 @@ jobs:
             docker logs subtracker-backend 2>&1 | grep -i error || true
 
   # Уведомления о статусе деплоя
-  notify:
+ notify:
     runs-on: ubuntu-latest
     needs: [deploy]
     if: always() && github.ref == 'refs/heads/main'
@@ -245,9 +306,9 @@ jobs:
             - Workflow: ${{ github.workflow }}
             
             ## Компоненты:
-            - ✅ Backend API (SQLite)
-            - ✅ Web Frontend (HTML/CSS/JS)
-            - ✅ Telegram Bot
+            - ✅ Backend API (SQLite/PostgreSQL)
+            - ✅ Web Frontend (Next.js 15)
+            - ✅ Telegram Bot (aiogram 3.22)
             
             ## Проверки:
             - ✅ Сборка и тесты
