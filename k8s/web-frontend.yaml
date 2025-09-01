@@ -51,7 +51,7 @@ spec:
   selector:
     app: web-frontend
   ports:
- - protocol: TCP
+  - protocol: TCP
     port: 3000
     targetPort: 3000
  type: ClusterIP
