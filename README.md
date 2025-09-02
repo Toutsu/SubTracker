@@ -37,7 +37,7 @@ docker-compose logs -f
 ```
 SubTracker/
 ├── 🖥️ backend/             # REST API (Kotlin + Spring Boot 3 + SQLite/PostgreSQL)
-├── 🌐 web-frontend/        # Веб-интерфейс (Next.js + TypeScript)
+├── 🌐 web-frontend/        # Веб-интерфейс (Vite + TypeScript)
 └── 🤖 telegram-bot/        # Telegram бот (Python + aiogram)
 ```
 
@@ -47,7 +47,7 @@ SubTracker/
 
 - ☕ **Java 17+**
 - 🐍 **Python 3.8+**
-- 🟦 **Node.js 16+**
+- 🟦 **Node.js 18+**
 - 📦 **Maven 3.8+**
 
 ### 1. Клонирование проекта
@@ -78,7 +78,7 @@ npm run dev
 
 ### 4. Готово! 🎉
 
-- Откройте **http://localhost:3000** в браузере
+- Откройте **http://localhost:80** в браузере
 - Войдите с данными: **user/user**
 - Или зарегистрируйте нового пользователя
 
@@ -134,7 +134,7 @@ docker-compose --profile with-bot up -d
 
 **Доступ:**
 - Backend: http://localhost:8080
-- Frontend: http://localhost:3000
+- Frontend: http://localhost:80
 
 ## 📚 Документация
 
