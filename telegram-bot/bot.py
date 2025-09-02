@@ -42,9 +42,11 @@ class Subscription:
     name: str
     price: str
     currency: str
-    billing_cycle: str
-    next_payment_date: str
-    is_active: bool = True
+    billing_period: str
+    next_payment: str
+    category: str
+    is_active: bool
+    description: Optional[str] = None
 
 
 @dataclass
@@ -53,8 +55,10 @@ class CreateSubscriptionRequest:
     name: str
     price: str
     currency: str
-    billing_cycle: str
-    next_payment_date: str
+    billing_period: str
+    next_payment: str
+    category: str
+    description: Optional[str] = None
 
 
 @dataclass
@@ -76,6 +80,7 @@ class BotState(StatesGroup):
     ADDING_SUBSCRIPTION_CURRENCY = State()
     ADDING_SUBSCRIPTION_CYCLE = State()
     ADDING_SUBSCRIPTION_DATE = State()
+    ADDING_SUBSCRIPTION_CATEGORY = State()
     LOGIN_USERNAME = State()
     LOGIN_PASSWORD = State()
 
@@ -92,7 +97,7 @@ class SubTrackerBot:
         self.dp = Dispatcher(storage=MemoryStorage())
         
         # Базовый URL API
-        self.api_base_url = os.getenv("BACKEND_API_URL", "http://backend:8080")
+        self.api_base_url = os.getenv("BACKEND_API_URL", "http://localhost:8080")
         
         # Хранилище состояний пользователей
         self.user_tokens: Dict[int, str] = {}  # chat_id -> JWT token
@@ -103,6 +108,42 @@ class SubTrackerBot:
         
         # Регистрация обработчиков
         self.register_handlers()
+    
+    def camel_to_snake(self, name: str) -> str:
+        """Преобразование camelCase в snake_case"""
+        import re
+        # Вставка подчеркивания перед заглавными буквами, которые не в начале строки
+        s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+        # Вставка подчеркивания перед заглавными буквами, за которыми следует строчная или цифра
+        return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+
+    def snake_to_camel(self, name: str) -> str:
+        """Преобразование snake_case в camelCase"""
+        components = name.split('_')
+        result = components[0] + ''.join(x.capitalize() for x in components[1:])
+        print(f"snake_to_camel: {name} -> {result}")
+        return result
+
+    def convert_keys_to_camel(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Рекурсивное преобразование ключей словаря из snake_case в camelCase"""
+        print(f"convert_keys_to_camel called with: {data}")
+        if isinstance(data, dict):
+            result = {self.snake_to_camel(k): self.convert_keys_to_camel(v) for k, v in data.items()}
+            print(f"convert_keys_to_camel result: {result}")
+            return result
+        elif isinstance(data, list):
+            return [self.convert_keys_to_camel(item) for item in data]
+        else:
+            return data
+
+    def convert_keys(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Рекурсивное преобразование ключей словаря из camelCase в snake_case"""
+        if isinstance(data, dict):
+            return {self.camel_to_snake(k): self.convert_keys(v) for k, v in data.items()}
+        elif isinstance(data, list):
+            return [self.convert_keys(item) for item in data]
+        else:
+            return data
     
     async def health_check(self, request):
         """Health check endpoint"""
@@ -130,11 +171,29 @@ class SubTrackerBot:
         self.dp.message(BotState.ADDING_SUBSCRIPTION_NAME)(self.handle_subscription_name)
         self.dp.message(BotState.ADDING_SUBSCRIPTION_PRICE)(self.handle_subscription_price)
         self.dp.message(BotState.ADDING_SUBSCRIPTION_CURRENCY)(self.handle_subscription_currency)
-        self.dp.message(BotState.ADDING_SUBSCRIPTION_CYCLE)(self.handle_subscription_cycle)
+        self.dp.message(BotState.ADDING_SUBSCRIPTION_CATEGORY)(self.handle_subscription_category)
+        # Обработка callback-запросов
+        self.dp.callback_query()(self.handle_callback_query)
         self.dp.message(BotState.ADDING_SUBSCRIPTION_DATE)(self.handle_subscription_date)
         
         # Обработка всех остальных текстовых сообщений
         self.dp.message(F.text)(self.handle_text)
+    
+    async def set_bot_commands(self):
+        """Установка списка команд бота"""
+        from aiogram.types import BotCommand
+        
+        commands = [
+            BotCommand(command="start", description="Запустить бота"),
+            BotCommand(command="help", description="Показать справку"),
+            BotCommand(command="login", description="Войти в систему"),
+            BotCommand(command="list", description="Показать все подписки"),
+            BotCommand(command="add", description="Добавить новую подписку"),
+            BotCommand(command="delete", description="Удалить подписку"),
+            BotCommand(command="stats", description="Показать статистику расходов")
+        ]
+        
+        await self.bot.set_my_commands(commands)
     
     async def start(self):
         """Запуск бота"""
@@ -143,6 +202,8 @@ class SubTrackerBot:
         # Запуск веб-сервера в отдельной задаче
         runner = web.AppRunner(self.app)
         await runner.setup()
+        # Установка команд бота
+        await self.set_bot_commands()
         site = web.TCPSite(runner, '0.0.0.0', 8081)
         await site.start()
         
@@ -177,6 +238,8 @@ class SubTrackerBot:
 🗑 /delete [id] - Удалить подписку по ID
 📊 /stats - Показать статистику расходов
 ❓ /help - Показать эту справку
+
+💡 Вы также можете использовать меню команд внизу экрана для быстрого доступа к функциям бота.
         """.strip()
         
         await message.answer(help_message)
@@ -211,7 +274,7 @@ class SubTrackerBot:
             
             async with aiohttp.ClientSession() as session:
                 async with session.post(
-                    f"{self.api_base_url}/api/auth/login",
+                    f"{self.api_base_url}/api/login",
                     json=asdict(login_request),
                     headers={"Content-Type": "application/json"}
                 ) as response:
@@ -243,15 +306,16 @@ class SubTrackerBot:
                 ) as response:
                     if response.status == 200:
                         subscriptions_data = await response.json()
-                        subscriptions = [Subscription(**sub) for sub in subscriptions_data]
+                        subscriptions = [Subscription(**self.convert_keys(sub)) for sub in subscriptions_data]
                         
                         if not subscriptions:
                             await message.answer("📋 У вас пока нет подписок.\nДобавьте первую: /add")
                         else:
                             message_text = "📋 Ваши подписки:\n"
                             for sub in subscriptions:
-                                message_text += f"• {sub.name} - {sub.price} {sub.currency} ({sub.billing_cycle})\n"
-                                message_text += f"  ID: {sub.id} | Следующий платеж: {sub.next_payment_date}\n"
+                                message_text += f"• {sub.name} - {sub.price} {sub.currency} ({sub.billing_period})\n"
+                                message_text += f"  ID: {sub.id} | Следующий платеж: {sub.next_payment}\n"
+                                message_text += f"  Категория: {sub.category}\n"
                             
                             await message.answer(message_text)
                     else:
@@ -259,6 +323,12 @@ class SubTrackerBot:
         except Exception as e:
             print(f"List subscriptions error: {e}")
             await message.answer("❌ Ошибка соединения с сервером")
+    
+    async def handle_subscription_category(self, message: Message, state: FSMContext):
+        """Обработка ввода категории подписки"""
+        await state.update_data(category=message.text)
+        await state.set_state(BotState.ADDING_SUBSCRIPTION_DATE)
+        await message.answer("📅 Введите дату следующего платежа (YYYY-MM-DD):")
     
     async def handle_add_command(self, message: Message, state: FSMContext):
         """Обработка команды /add"""
@@ -281,19 +351,93 @@ class SubTrackerBot:
         """Обработка ввода стоимости подписки"""
         await state.update_data(price=message.text)
         await state.set_state(BotState.ADDING_SUBSCRIPTION_CURRENCY)
-        await message.answer("💱 Введите валюту (например: USD, EUR, RUB):")
+        
+        # Отправляем кнопки для выбора валюты
+        from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="USD", callback_data="currency_USD")],
+            [InlineKeyboardButton(text="EUR", callback_data="currency_EUR")],
+            [InlineKeyboardButton(text="RUB", callback_data="currency_RUB")]
+        ])
+        await message.answer("💱 Выберите валюту:", reply_markup=keyboard)
     
     async def handle_subscription_currency(self, message: Message, state: FSMContext):
         """Обработка ввода валюты подписки"""
-        await state.update_data(currency=message.text)
-        await state.set_state(BotState.ADDING_SUBSCRIPTION_CYCLE)
-        await message.answer("🔄 Введите цикл оплаты (например: monthly, yearly):")
+        await state.update_data(name=message.text)
+        await state.set_state(BotState.ADDING_SUBSCRIPTION_PRICE)
+        await message.answer("💰 Введите стоимость подписки:")
     
-    async def handle_subscription_cycle(self, message: Message, state: FSMContext):
-        """Обработка ввода цикла оплаты подписки"""
-        await state.update_data(billing_cycle=message.text)
-        await state.set_state(BotState.ADDING_SUBSCRIPTION_DATE)
-        await message.answer("📅 Введите дату следующего платежа (YYYY-MM-DD):")
+    async def handle_callback_query(self, callback_query: CallbackQuery, state: FSMContext):
+        """Обработка callback-запросов от кнопок"""
+        data = callback_query.data
+        message = callback_query.message
+        
+        # Обработка выбора валюты
+        if data.startswith("currency_"):
+            currency = data.split("_")[1]
+            supported_currencies = ["USD", "EUR", "RUB"]
+            if currency in supported_currencies:
+                await state.update_data(currency=currency)
+                await state.set_state(BotState.ADDING_SUBSCRIPTION_CYCLE)
+                await callback_query.answer()
+                await message.edit_text(f"💱 Валюта выбрана: {currency}")
+                
+                # Отправляем кнопки для выбора цикла оплаты
+                from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+                keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="Ежемесячно", callback_data="cycle_monthly")],
+                    [InlineKeyboardButton(text="Ежегодно", callback_data="cycle_yearly")]
+                ])
+                await message.answer("🔄 Выберите цикл оплаты:", reply_markup=keyboard)
+            else:
+                await callback_query.answer("❌ Неподдерживаемая валюта")
+        
+        # Обработка выбора цикла оплаты
+        elif data.startswith("cycle_"):
+            cycle_map = {
+                "cycle_monthly": "monthly",
+                "cycle_yearly": "yearly"
+            }
+            if data in cycle_map:
+                await state.update_data(billing_cycle=cycle_map[data])
+                await state.set_state(BotState.ADDING_SUBSCRIPTION_CATEGORY)
+                await callback_query.answer()
+                await message.edit_text("🔄 Цикл оплаты выбран: " + ("ежемесячно" if data == "cycle_monthly" else "ежегодно"))
+                
+                # Отправляем кнопки для выбора категории
+                from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+                keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="Развлечения", callback_data="category_entertainment")],
+                    [InlineKeyboardButton(text="Продуктивность", callback_data="category_productivity")],
+                    [InlineKeyboardButton(text="Дизайн", callback_data="category_design")],
+                    [InlineKeyboardButton(text="Облачные сервисы", callback_data="category_cloud")],
+                    [InlineKeyboardButton(text="Музыка", callback_data="category_music")],
+                    [InlineKeyboardButton(text="Видео", callback_data="category_video")],
+                    [InlineKeyboardButton(text="Другое", callback_data="category_other")]
+                ])
+                await message.answer("📂 Выберите категорию подписки:", reply_markup=keyboard)
+            else:
+                await callback_query.answer("❌ Неподдерживаемый цикл оплаты")
+        
+        # Обработка выбора категории
+        elif data.startswith("category_"):
+            category_map = {
+                "category_entertainment": "Entertainment",
+                "category_productivity": "Productivity",
+                "category_design": "Design",
+                "category_cloud": "Cloud Services",
+                "category_music": "Music",
+                "category_video": "Video",
+                "category_other": "Other"
+            }
+            if data in category_map:
+                await state.update_data(category=category_map[data])
+                await state.set_state(BotState.ADDING_SUBSCRIPTION_DATE)
+                await callback_query.answer()
+                await message.edit_text("📂 Категория выбрана: " + category_map[data])
+                await message.answer("📅 Введите дату следующего платежа (YYYY-MM-DD):")
+            else:
+                await callback_query.answer("❌ Неподдерживаемая категория")
     
     async def handle_subscription_date(self, message: Message, state: FSMContext):
         """Обработка ввода даты следующего платежа и создание подписки"""
@@ -324,14 +468,32 @@ class SubTrackerBot:
                 name=subscription_data["name"],
                 price=subscription_data["price"],
                 currency=subscription_data["currency"],
-                billing_cycle=subscription_data["billing_cycle"],
-                next_payment_date=subscription_data["next_payment_date"]
+                billing_period=subscription_data["billing_cycle"],
+                next_payment=subscription_data["next_payment_date"],
+                category=subscription_data.get("category", "Other")
             )
             
             async with aiohttp.ClientSession() as session:
+                # Отладочный вывод
+                request_dict = asdict(create_request)
+                print(f"Request dict before conversion: {request_dict}")
+                print(f"Testing snake_to_camel: billing_period -> {self.snake_to_camel('billing_period')}")
+                # Тестовое преобразование
+                test_dict = {"billing_period": "monthly", "name": "Test", "price": "10"}
+                print(f"Test dict before conversion: {test_dict}")
+                test_converted = self.convert_keys_to_camel(test_dict)
+                print(f"Test dict after conversion: {test_converted}")
+                converted_dict = self.convert_keys_to_camel(request_dict)
+                print(f"Request dict after conversion: {converted_dict}")
+                
+                # Явная сериализация в JSON для проверки
+                import json as json_module
+                json_data = json_module.dumps(converted_dict)
+                print(f"JSON data being sent: {json_data}")
+                
                 async with session.post(
                     f"{self.api_base_url}/api/subscriptions",
-                    json=asdict(create_request),
+                    data=json_data,
                     headers={
                         "Authorization": f"Bearer {token}",
                         "Content-Type": "application/json"
@@ -390,7 +552,7 @@ class SubTrackerBot:
                 ) as response:
                     if response.status == 200:
                         subscriptions_data = await response.json()
-                        subscriptions = [Subscription(**sub) for sub in subscriptions_data]
+                        subscriptions = [Subscription(**self.convert_keys(sub)) for sub in subscriptions_data]
                         
                         if not subscriptions:
                             await message.answer("📊 У вас пока нет подписок для анализа")
@@ -401,9 +563,9 @@ class SubTrackerBot:
                             total_yearly = 0
                             for sub in subscriptions:
                                 price = float(sub.price)
-                                if sub.billing_cycle.lower() == "monthly":
+                                if sub.billing_period.lower() == "monthly":
                                     total_yearly += price * 12
-                                elif sub.billing_cycle.lower() == "yearly":
+                                elif sub.billing_period.lower() == "yearly":
                                     total_yearly += price
                                 else:
                                     total_yearly += price  # Для других циклов оставляем как есть

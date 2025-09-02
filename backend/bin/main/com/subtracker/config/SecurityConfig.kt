@@ -25,8 +25,10 @@ class SecurityConfig(
             .csrf { it.disable() }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests {
-                it.requestMatchers("/health", "/register", "/login").permitAll()
-                it.requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                it.requestMatchers("/health", "/register", "/login", "/error").permitAll()
+                it.requestMatchers("/api/health", "/api/register", "/api/login").permitAll()
+                it.requestMatchers("/api/swagger-ui.html", "/api/swagger-ui/**", "/api/v3/api-docs/**").permitAll()
+                it.requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 it.anyRequest().authenticated()
             }
             .cors { it.configurationSource(corsConfigurationSource()) }

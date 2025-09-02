@@ -43,7 +43,7 @@ class TestAPIIntegration:
         with aioresponses() as m:
             # Мокируем POST запрос к API аутентификации
             m.post(
-                "http://localhost:8080/api/auth/login",
+                "http://localhost:8080/api/login",
                 payload={"token": "test_jwt_token"},
                 status=200
             )
@@ -62,7 +62,7 @@ class TestAPIIntegration:
         with aioresponses() as m:
             # Мокируем POST запрос к API аутентификации с ошибкой
             m.post(
-                "http://localhost:8080/api/auth/login",
+                "http://localhost:8080/api/login",
                 status=401
             )
             
@@ -80,7 +80,7 @@ class TestAPIIntegration:
         with aioresponses() as m:
             # Мокируем POST запрос к API аутентификации с исключением
             m.post(
-                "http://localhost:8080/api/auth/login",
+                "http://localhost:8080/api/login",
                 exception=Exception("Connection error")
             )
             

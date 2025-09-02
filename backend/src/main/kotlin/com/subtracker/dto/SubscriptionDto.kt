@@ -9,16 +9,20 @@ data class SubscriptionResponse(
     val name: String,
     val price: String,
     val currency: String,
-    val billingCycle: String,
-    val nextPaymentDate: String,
+    val billingPeriod: String,
+    val nextPayment: String,
+    val category: String,
+    val description: String? = null,
     val isActive: Boolean = true
 )
 
 data class CreateSubscriptionRequest(
-    val userId: String,
+    val userId: String? = null,
     val name: String,
     val price: String,
     val currency: String,
-    val billingCycle: String,
-    val nextPaymentDate: String
+    val billingPeriod: String,
+    val nextPayment: String,
+    val category: String,
+    val description: String? = null
 )

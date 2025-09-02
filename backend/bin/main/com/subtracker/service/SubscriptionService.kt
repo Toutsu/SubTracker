@@ -24,16 +24,20 @@ class SubscriptionService(
         name: String,
         price: BigDecimal,
         currency: String,
-        billingCycle: String,
-        nextPaymentDate: LocalDate
+        billingPeriod: String,
+        nextPayment: LocalDate,
+        category: String,
+        description: String? = null
     ): Subscription {
         val subscription = Subscription(
             userId = userId,
             name = name,
             price = price,
             currency = currency,
-            billingCycle = billingCycle,
-            nextPaymentDate = nextPaymentDate,
+            billingPeriod = billingPeriod,
+            nextPayment = nextPayment,
+            category = category,
+            description = description,
             isActive = true,
             createdAt = LocalDate.now(),
             updatedAt = LocalDate.now()

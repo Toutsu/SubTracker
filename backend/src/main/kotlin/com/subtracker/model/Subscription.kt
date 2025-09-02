@@ -10,7 +10,7 @@ data class Subscription(
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", nullable = false, unique = true)
-    val id: String = "",
+    var id: String? = null,
     
     @Column(name = "user_id", nullable = false)
     val userId: String,
@@ -25,10 +25,16 @@ data class Subscription(
     val currency: String,
     
     @Column(name = "billing_cycle", nullable = false)
-    val billingCycle: String,
+    val billingPeriod: String,
     
     @Column(name = "next_payment_date", nullable = false)
-    val nextPaymentDate: LocalDate,
+    val nextPayment: LocalDate,
+    
+    @Column(name = "category", nullable = false, columnDefinition = "varchar(255) default ''")
+    val category: String,
+    
+    @Column(name = "description")
+    val description: String? = null,
     
     @Column(name = "is_active", nullable = false)
     val isActive: Boolean = true,

@@ -7,15 +7,19 @@ import com.subtracker.service.UserService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import jakarta.validation.Valid
+import org.slf4j.LoggerFactory
 
 @RestController
-@RequestMapping("/api")
 class AuthController(
     private val userService: UserService
 ) {
+    companion object {
+        private val logger = LoggerFactory.getLogger(AuthController::class.java)
+    }
     
     @PostMapping("/register")
     fun register(@Valid @RequestBody request: RegisterRequest): ResponseEntity<AuthResponse> {
+        logger.info("Received registration request for username: ${request.username}")
         try {
             val user = userService.registerUser(request.username, request.email, request.password)
             
