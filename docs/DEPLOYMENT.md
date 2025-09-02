@@ -33,14 +33,14 @@ BACKEND_API_URL=http://localhost:8080             # URL backend API
 
 #### Web Frontend
 ```bash
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8080    # URL backend API
+VITE_API_BASE_URL=http://localhost:8080    # URL backend API
 ```
 
 ### Docker Compose конфигурация
 
 **Сервисы:**
 1. **backend** - API сервер на порту 80
-2. **frontend** - Next.js приложение на порту 3000
+2. **frontend** - Vite приложение на порту 3000
 3. **telegram-bot** - Telegram бот (profile: with-bot)
 
 **Volumes:**
@@ -146,7 +146,7 @@ healthcheck:
    java -jar backend/target/*.jar
    
    # Frontend:
-   npm start
+   npx vite preview
    
    # Telegram bot:
    cd telegram-bot
@@ -320,7 +320,7 @@ cp subtracker.db.backup.latest subtracker.db
    - Убедитесь, что бот имеет доступ к интернету
 
 4. **Проблемы с фронтендом:**
-   - Проверьте NEXT_PUBLIC_API_BASE_URL
+   - Проверьте VITE_API_BASE_URL
    - Убедитесь, что backend доступен
 
 ### Security Best Practices
@@ -339,3 +339,34 @@ cp subtracker.db.backup.latest subtracker.db
    - Регулярно обновляйте зависимости
    - Используйте статический анализ кода
    - Проводите penetration testing
+## 🐳 Docker конфигурация
+
+Каждый модуль имеет свой Dockerfile для сборки образа:
+
+### Frontend (Vite)
+- **Dockerfile**: `web-frontend/Dockerfile`
+- **Сервер**: Nginx для раздачи статических файлов
+- **Build директория**: `/app/build`
+- **Порт**: 80
+
+### Backend
+- **Dockerfile**: `backend/Dockerfile`
+- **Сервер**: Встроенный сервер Spring Boot
+- **Порт**: 8080
+
+### Telegram Bot
+- **Dockerfile**: `telegram-bot/Dockerfile`
+- **Сервер**: Python приложение
+- **Порт**: отсутствует (не веб-сервис)
+
+### Docker Compose
+Файл `docker-compose.yml` содержит конфигурацию всех сервисов:
+- **backend** - API сервер
+- **frontend** - Vite приложение
+- **telegram-bot** - Telegram бот (опционально)
+
+Volumes:
+- `./data:/app/data` - персистентное хранение SQLite БД
+
+Networks:
+- `subtracker-network` - внутренняя сеть для межсервисного взаимодействия

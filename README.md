@@ -15,6 +15,26 @@
 ## 🏗️ Архитектура проекта
 
 ```
+### 🐳 Docker развертывание
+
+Каждый модуль имеет свой Dockerfile для сборки образа:
+
+- **Frontend**: `web-frontend/Dockerfile` (Nginx сервер)
+- **Backend**: `backend/Dockerfile` (Spring Boot приложение)
+- **Telegram Bot**: `telegram-bot/Dockerfile` (Python приложение)
+
+#### Команды Docker Compose:
+
+```bash
+# Сборка и запуск всех сервисов
+docker-compose up -d --build
+
+# Остановка всех сервисов
+docker-compose down
+
+# Просмотр логов
+docker-compose logs -f
+```
 SubTracker/
 ├── 🖥️ backend/             # REST API (Kotlin + Spring Boot 3 + SQLite/PostgreSQL)
 ├── 🌐 web-frontend/        # Веб-интерфейс (Next.js + TypeScript)
