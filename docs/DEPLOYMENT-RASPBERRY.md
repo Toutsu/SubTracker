@@ -71,7 +71,7 @@ docker buildx inspect --bootstrap
 ```bash
 # Использование подготовленного скрипта
 chmod +x build-arm-images.sh
-./build-arm-images.sh
+./scripts/build-arm-images.sh
 ```
 
 ## Развертывание в Kubernetes
@@ -81,7 +81,7 @@ chmod +x build-arm-images.sh
 ```bash
 # Использование подготовленного скрипта
 chmod +x deploy-k8s.sh
-./deploy-k8s.sh
+./scripts/deploy-k8s.sh
 ```
 
 ### 2. Проверка статуса развертывания
@@ -89,7 +89,7 @@ chmod +x deploy-k8s.sh
 ```bash
 # Использование подготовленного скрипта
 chmod +x check-deployment.sh
-./check-deployment.sh
+./scripts/check-deployment.sh
 ```
 
 ## Доступ к приложению
@@ -126,7 +126,7 @@ kubectl rollout restart deployment/[имя_деплоймента] -n subtracker
 kubectl delete namespace subtracker
 
 # Повторное развертывание
-./deploy-k8s.sh
+./scripts/deploy-k8s.sh
 ```
 
 ## Обновление приложения
@@ -140,14 +140,14 @@ kubectl delete namespace subtracker
 
 2. Пересоберите Docker образы:
    ```bash
-   ./build-arm-images.sh
+   ./scripts/build-arm-images.sh
    ```
 
 3. Обновите развертывание:
    ```bash
-   ./deploy-k8s.sh
+   ./scripts/deploy-k8s.sh
    ```
 
 4. Проверьте статус:
    ```bash
-   ./check-deployment.sh
+   ./scripts/check-deployment.sh

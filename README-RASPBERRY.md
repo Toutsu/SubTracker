@@ -15,7 +15,7 @@
 3. Выполните команду:
 
 ```powershell
-.\connect-raspberry.ps1
+.\scripts/connect-raspberry.ps1
 ```
 
 Скрипт автоматически:

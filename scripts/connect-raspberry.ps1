@@ -89,8 +89,11 @@ Write-Host "Project found: $projectPath"
 Write-Host "Checking project status..."
 Connect-And-Execute "cd $projectPath && pwd && git status"
 
-# Update code from Git repository
-Write-Host "Updating code from Git repository..."
+# Reset local changes and update code from Git repository
+Write-Host "Resetting local changes and updating code from Git repository..."
+$resetResult = Connect-And-Execute "cd $projectPath && git reset --hard HEAD"
+Write-Host "Reset result: $resetResult"
+
 $updateResult = Connect-And-Execute "cd $projectPath && git pull origin main"
 Write-Host "Update result: $updateResult"
 
