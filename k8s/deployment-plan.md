@@ -15,11 +15,11 @@
      - JWT_AUDIENCE
      - JWT_REALM
 
-2. **Web Frontend** (Next.js)
-   - Порт: 3000
+2. **Web Frontend** (Vite)
+   - Порт: 80
    - Зависимости: Backend API
    - Конфигурации:
-     - NEXT_PUBLIC_API_BASE_URL
+     - VITE_API_BASE_URL
 
 3. **Telegram Bot** (Python/aiogram)
    - Порт: 8081 (для healthcheck)
@@ -104,7 +104,7 @@ JWT_REALM: SubTracker
 
 ### Web Frontend
 ```
-NEXT_PUBLIC_API_BASE_URL: http://backend:8080
+VITE_API_BASE_URL: http://backend:8080
 ```
 
 ### Telegram Bot

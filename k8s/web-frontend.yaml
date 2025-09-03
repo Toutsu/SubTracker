@@ -17,8 +17,8 @@ spec:
     spec:
       containers:
       - name: web-frontend
-        image: subtracker-frontend:v1.0
-        imagePullPolicy: Never
+        image: subtracker/web-frontend:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 80
         env:
@@ -30,13 +30,13 @@ spec:
               key: VITE_API_BASE_URL
         readinessProbe:
           httpGet:
-            path: /health
+            path: /
             port: 80
           initialDelaySeconds: 30
           periodSeconds: 10
         livenessProbe:
           httpGet:
-            path: /health
+            path: /
             port: 80
           initialDelaySeconds: 60
           periodSeconds: 30

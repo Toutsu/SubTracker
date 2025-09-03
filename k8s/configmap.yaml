@@ -12,7 +12,7 @@ data:
   JWT_REALM: "SubTracker"
   
   # Web Frontend configuration
-  NEXT_PUBLIC_API_BASE_URL: "http://backend:8080"
+  VITE_API_BASE_URL: "http://backend:8080"
   
   # Telegram Bot configuration
   BACKEND_API_URL: "http://backend:8080"

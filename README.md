@@ -35,6 +35,27 @@ docker-compose down
 # Просмотр логов
 docker-compose logs -f
 ```
+
+### ☸️ Kubernetes развертывание
+
+Для развертывания в Kubernetes используются манифесты из директории `k8s/`:
+
+```bash
+# 1. Создать namespace для приложения:
+kubectl create namespace subtracker
+
+# 2. Применить манифесты:
+kubectl apply -k k8s/ -n subtracker
+
+# 3. Проверить статус подов:
+kubectl get pods -n subtracker
+
+# 4. Проверить сервисы:
+kubectl get services -n subtracker
+
+# 5. Проверить ingress:
+kubectl get ingress -n subtracker
+```
 SubTracker/
 ├── 🖥️ backend/             # REST API (Kotlin + Spring Boot 3 + SQLite/PostgreSQL)
 ├── 🌐 web-frontend/        # Веб-интерфейс (Vite + TypeScript)
@@ -49,6 +70,8 @@ SubTracker/
 - 🐍 **Python 3.8+**
 - 🟦 **Node.js 18+**
 - 📦 **Maven 3.8+**
+- 🐳 **Docker и Docker Compose**
+- ☸️ **kubectl и доступ к кластеру Kubernetes (для Kubernetes развертывания)**
 
 ### 1. Клонирование проекта
 
@@ -88,6 +111,22 @@ npm run dev
 - **Пароль:** `user`
 - **База данных:** SQLite (создается автоматически)
 - **CORS:** настроен для localhost:3000
+
+### 🚀 Kubernetes развертывание (альтернативный способ)
+
+```bash
+# 1. Создать namespace для приложения:
+kubectl create namespace subtracker
+
+# 2. Применить манифесты:
+kubectl apply -k k8s/ -n subtracker
+
+# 3. Проверить статус подов:
+kubectl get pods -n subtracker
+
+# 4. Получить внешний IP (если используется):
+kubectl get ingress subtracker-frontend -n subtracker
+```
 
 ### 🤖 Telegram бот (опционально)
 
