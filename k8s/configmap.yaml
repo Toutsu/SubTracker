@@ -7,6 +7,7 @@ data:
   # Backend configuration
   DATABASE_DRIVER: "org.postgresql.Driver"
   DATABASE_URL: "jdbc:postgresql://postgresql:5432/subtracker"
+  DATABASE_DIALECT: "org.hibernate.dialect.PostgreSQLDialect"
   JWT_ISSUER: "SubTracker"
   JWT_AUDIENCE: "users"
   JWT_REALM: "SubTracker"

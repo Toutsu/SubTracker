@@ -14,7 +14,11 @@ spring:
       ddl-auto: update
     show-sql: false
     open-in-view: false
-    database-platform: org.hibernate.community.dialect.SQLiteDialect
+    database-platform: ${DATABASE_DIALECT:org.hibernate.community.dialect.SQLiteDialect}
+    properties:
+      hibernate:
+        # Fix for PostgreSQL CLOB issue
+       .jdbc.lob.non_contextual_creation: true
   
   jackson:
     property-naming-strategy: SNAKE_CASE
