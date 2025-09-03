@@ -7,7 +7,7 @@ SubTracker состоит из нескольких независимых мо�
 ```
 SubTracker/
 ├── 🖥️ backend/             # REST API (Kotlin + Spring Boot 3 + SQLite/PostgreSQL)
-├── 🌐 web-frontend/        # Веб-интерфейс (Next.js + TypeScript)
+├── 🌐 web-frontend/        # Веб-интерфейс (Vite + TypeScript)
 └── 🤖 telegram-bot/        # Telegram бот (Python + aiogram)
 ```
 
@@ -26,7 +26,7 @@ SubTracker/
 - Система регистрации и авторизации
 
 #### 🌐 **:web-frontend** - Веб-интерфейс
-- **Next.js** фреймворк для React приложений
+- **Vite** как инструмент сборки
 - **TypeScript** для типобезопасной разработки
 - **Tailwind CSS** для стилизации
 - Современный responsive дизайн
@@ -43,6 +43,7 @@ SubTracker/
 - Статистика и управление
 - Интеграция с backend API через HTTP запросы
 - Обработка ошибок
+
 #### 🐳 **Docker конфигурация**
 
 Каждый модуль имеет свой Dockerfile для сборки образа:
@@ -170,7 +171,7 @@ class CorsConfig {
     @Bean
     fun corsConfigurationSource(): CorsConfigurationSource {
         val configuration = CorsConfiguration()
-        configuration.allowedOrigins = listOf("http://localhost:3000")
+        configuration.allowedOrigins = listOf("http://localhost:80")
         configuration.allowedMethods = listOf("GET", "POST", "PUT", "DELETE", "OPTIONS")
         configuration.allowedHeaders = listOf("*")
         configuration.allowCredentials = true
