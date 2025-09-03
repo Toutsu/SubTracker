@@ -28,17 +28,24 @@ spec:
             configMapKeyRef:
               name: subtracker-config
               key: VITE_API_BASE_URL
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
         readinessProbe:
           httpGet:
             path: /
             port: 80
-          initialDelaySeconds: 30
-          periodSeconds: 10
+          initialDelaySeconds: 45
+          periodSeconds: 15
         livenessProbe:
           httpGet:
             path: /
             port: 80
-          initialDelaySeconds: 60
+          initialDelaySeconds: 90
           periodSeconds: 30
 ---
 apiVersion: v1

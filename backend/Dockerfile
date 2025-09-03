@@ -56,9 +56,9 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 
 # Команда запуска
 CMD ["java", \
-     "-Xmx512m", \
-     "-Xms256m", \
-     "-XX:+UseG1GC", \
+     "-Xmx256m", \
+     "-Xms128m", \
+     "-XX:+UseSerialGC", \
      "-XX:+UseContainerSupport", \
      "-Djava.security.egd=file:/dev/./urandom", \
      "-jar", "/app/app.jar"]
