@@ -20,24 +20,24 @@ spec:
         image: subtracker-frontend:v1.0
         imagePullPolicy: Never
         ports:
-        - containerPort: 3000
+        - containerPort: 80
         env:
         # Configuration from ConfigMap
-        - name: NEXT_PUBLIC_API_BASE_URL
+        - name: VITE_API_BASE_URL
           valueFrom:
             configMapKeyRef:
               name: subtracker-config
-              key: NEXT_PUBLIC_API_BASE_URL
+              key: VITE_API_BASE_URL
         readinessProbe:
           httpGet:
             path: /health
-            port: 3000
+            port: 80
           initialDelaySeconds: 30
           periodSeconds: 10
         livenessProbe:
           httpGet:
             path: /health
-            port: 3000
+            port: 80
           initialDelaySeconds: 60
           periodSeconds: 30
 ---
@@ -53,6 +53,6 @@ spec:
     app: web-frontend
   ports:
   - protocol: TCP
-    port: 3000
-    targetPort: 3000
+    port: 80
+    targetPort: 80
   type: ClusterIP
